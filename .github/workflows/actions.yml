@@ -39,7 +39,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    # Wait for PostgreSQL to be ready
     - name: Wait for PostgreSQL
       run: |
         until pg_isready -h localhost -p 5432 -U test_user; do
@@ -79,7 +78,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.11'
         cache: 'pip'
 
     - name: Install linting tools
