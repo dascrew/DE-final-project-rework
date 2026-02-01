@@ -78,22 +78,20 @@ def read_parquet_data_to_dataframe(bucket):
         if not object_list:
             logger.warning(f"No files found in bucket {bucket}")
             return {}
-            
+
         result = {}
         sorted_files_list = sorted(object_list)
         last_object_list = sorted_files_list[-1]
-        
+
         # Match timestamp format: YYYY-MM-DD HH:MM (produced by transform)
-        match = re.match(
-            r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/", last_object_list
-        )
+        match = re.match(r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2})/", last_object_list)
         if not match:
             logger.error(f"Could not parse timestamp from: {last_object_list}")
             raise ValueError(f"Invalid S3 key format: {last_object_list}")
-            
+
         last_sync_timestamp = match.group(1)
         logger.info(f"Loading parquet files from timestamp: {last_sync_timestamp}")
-        
+
         for table in tables:
             try:
                 path = f"s3://{bucket}/{last_sync_timestamp}/{table}.parquet"
@@ -101,8 +99,12 @@ def read_parquet_data_to_dataframe(bucket):
                 result[table] = wr.s3.read_parquet(path=[path])
                 logger.info(f"Loaded {table}: {len(result[table])} rows")
             except Exception as parquet_error:
-                logger.error(f"Failed to load {table}.parquet: {parquet_error}")
-                raise  # Re-raise to fail fast
+                # Log warning but continue - not all tables may have new data
+                logger.warning(f"Could not load {table}.parquet: {parquet_error}")
+
+        if not result:
+            logger.error("No parquet files were loaded successfully")
+            raise RuntimeError("Failed to load any parquet files")
 
         return result
     except Exception as e:
